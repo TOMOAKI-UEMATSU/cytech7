@@ -22,6 +22,16 @@
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
             @include('layouts.navigation')
+              @auth
+        <div class="text-right p-4">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="btn btn-link text-sm text-gray-500 hover:text-gray-700">
+                    ログアウト
+                </button>
+            </form>
+        </div>
+        @endauth
 
             <!-- Page Heading -->
             @if (isset($header))
