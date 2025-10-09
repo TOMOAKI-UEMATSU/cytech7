@@ -109,37 +109,37 @@ public function index(Request $request)
     // compact('products')と行うことは同じであるためどちらでも良い
     }
 
-//  public function edit(Product $product)
-// {
-//     $companies = Company::all();
-//     return view('products.edit', compact('product', 'companies'));
-// }
+ public function edit(Product $product)
+{
+    $companies = Company::all();
+    return view('products.edit', compact('product', 'companies'));
+}
 
-    // public function update(Request $request, Product $product)
-    // {
-    //     // リクエストされた情報を確認して、必要な情報が全て揃っているかチェックします。
-    //     $request->validate([
-    //         'product_name' => 'required',
-    //         'price' => 'required',
-    //         'stock' => 'required',
-    //     ]);
-    //     //バリデーションによりフォームに未入力項目があればエラーメッセー発生させる（未入力です　など）
+    public function update(Request $request, Product $product)
+    {
+        // リクエストされた情報を確認して、必要な情報が全て揃っているかチェックします。
+        $request->validate([
+            'product_name' => 'required',
+            'price' => 'required',
+            'stock' => 'required',
+        ]);
+        //バリデーションによりフォームに未入力項目があればエラーメッセー発生させる（未入力です　など）
 
-    //     // 商品の情報を更新します。
-    //     $product->product_name = $request->product_name;
-    //     //productモデルのproduct_nameをフォームから送られたproduct_nameの値に書き換える
-    //     $product->price = $request->price;
-    //     $product->stock = $request->stock;
+        // 商品の情報を更新します。
+        $product->product_name = $request->product_name;
+        //productモデルのproduct_nameをフォームから送られたproduct_nameの値に書き換える
+        $product->price = $request->price;
+        $product->stock = $request->stock;
 
-    //     // 更新した商品を保存します。
-    //     $product->save();
-    //     // モデルインスタンスである$productに対して行われた変更をデータベースに保存するためのメソッド（機能）です。
+        // 更新した商品を保存します。
+        $product->save();
+        // モデルインスタンスである$productに対して行われた変更をデータベースに保存するためのメソッド（機能）です。
 
-    //     // 全ての処理が終わったら、商品一覧画面に戻ります。
-    //     return redirect()->route('products.index')
-    //         ->with('success', 'Product updated successfully');
-    //     // ビュー画面にメッセージを代入した変数(success)を送ります
-    // }
+        // 全ての処理が終わったら、商品一覧画面に戻ります。
+        return redirect()->route('products.index')
+            ->with('success', 'Product updated successfully');
+        // ビュー画面にメッセージを代入した変数(success)を送ります
+    }
 
     public function destroy(Product $product)
 //(Product $product) 指定されたIDで商品をデータベースから自動的に検索し、その結果を $product に割り当てます。

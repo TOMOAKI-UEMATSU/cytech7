@@ -3,7 +3,7 @@
 @section('content')
 <div class="container">
     <h1 class="mb-4">商品情報詳細</h1>
-
+    <a href="{{ route('products.edit', $product) }}" class="btn btn-primary btn-sm mx-1">編集</a>
     <a href="{{ route('products.index') }}" class="btn btn-primary mt-3">商品一覧画面に戻る</a>
 
     <dl class="row mt-3" >
@@ -28,7 +28,6 @@
         <dt class="col-sm-3">商品画像</dt>
         <dd class="col-sm-9"><img src="{{ asset($product->img_path) }}" width="300"></dd>
     </dl>
-    <a href="{{ route('products.edit', $product) }}" class="btn btn-primary btn-sm mx-1">商品情報を編集する</a>
 
 </div>
 @endsection
