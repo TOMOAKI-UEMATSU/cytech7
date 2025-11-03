@@ -3,10 +3,17 @@
 @section('content')
 <div class="container">
     <h1 class="mb-4">商品情報詳細</h1>
-    <a href="{{ route('products.edit', $product) }}" class="btn btn-primary btn-sm mx-1">編集</a>
-    <a href="{{ route('products.index') }}" class="btn btn-primary mt-3">商品一覧画面に戻る</a>
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{{ route('products.edit', $product->id) }}" class="btn btn-primary">
+            編集する
+        </a>
+        <a href="{{ route('products.index') }}" class="btn btn-secondary">
+            商品一覧に戻る
+        </a>
+    </div>
 
-    <dl class="row mt-3" >
+
+    <dl class="row mt-3">
         <dt class="col-sm-3">商品情報ID</dt>
         <dd class="col-sm-9">{{ $product->id }}</dd>
 
@@ -31,4 +38,3 @@
 
 </div>
 @endsection
-

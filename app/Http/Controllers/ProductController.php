@@ -1,156 +1,147 @@
 <?php
 
-// まずは必要なモジュールを読み込んでいます。今回はProductとCompanyの情報と、リクエストの情報が必要です。
 namespace App\Http\Controllers;
 
-use App\Models\Product; // Productモデルを現在のファイルで使用できるようにするための宣言です。
-use App\Models\Company; // Companyモデルを現在のファイルで使用できるようにするための宣言です。
-use Illuminate\Http\Request; // Requestクラスという機能を使えるように宣言します
-// Requestクラスはブラウザに表示させるフォームから送信されたデータをコントローラのメソッドで引数として受け取ることができます。
-// 10件ずつの商品情報を取得します。
+use App\Models\Product;
+use App\Models\Company;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
-class ProductController extends Controller //コントローラークラスを継承します（コントローラーの機能が使えるようになります）
+class ProductController extends Controller
 {
-    
-public function index(Request $request)
-{
-    $query = Product::query();
+    public function index(Request $request)
+    {
+        $query = Product::query();
 
-    if ($request->filled('keyword')) {
-        $query->where('product_name', 'like', '%' . $request->keyword . '%');
+        if ($request->filled('keyword')) {
+            $query->where('product_name', 'like', '%' . $request->keyword . '%');
+        }
+
+        if ($request->filled('company_id')) {
+            $query->where('company_id', $request->company_id);
+        }
+
+        $products = $query->paginate(10)->appends($request->query());
+        $companies = Company::all();
+
+        return view('products.index', compact('products', 'companies'));
     }
 
-    if ($request->filled('company_id')) {
-        $query->where('company_id', $request->company_id);
-    }
-
-    $products = $query->paginate(10)->appends($request->query());
-    $companies = Company::all();
-
-    return view('products.index', compact('products', 'companies'));
-}
 
     public function create()
     {
-        // 商品作成画面で会社の情報が必要なので、全ての会社の情報を取得します。
         $companies = Company::all();
-
-        // 商品作成画面を表示します。その際に、先ほど取得した全ての会社情報を画面に渡します。
         return view('products.create', compact('companies'));
-
     }
 
-    // 送られたデータをデータベースに保存するメソッドです
-    public function store(Request $request) // フォームから送られたデータを　$requestに代入して引数として渡している
+
+    public function store(Request $request)
     {
-        // リクエストされた情報を確認して、必要な情報が全て揃っているかチェックします。
-        // ->validate()メソッドは送信されたリクエストデータが
-        // 特定の条件を満たしていることを確認します。
+        // 🔒 バリデーション（例外外で実行）
         $request->validate([
-            'product_name' => 'required', //requiredは必須という意味です
-            'company_id' => 'required',
-            'price' => 'required',
-            'stock' => 'required',
-            'comment' => 'nullable', //'nullable'はそのフィールドが未入力でもOKという意味です
-            'img_path' => 'nullable|image|max:2048',
+            'name'        => 'required|string|max:255',
+            'company_id'  => 'required|integer|exists:companies,id',
+            'price'       => 'required|integer',
+            'stock'       => 'required|integer',
+            'description' => 'required|string|max:1000',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-        // '|'はパイプと呼ばれる記号で、バリデーションルールを複数指定するときに使います
-        // 'image'はそのフィールドが画像ファイルであることを指定するルールです
-        // max:2048'は最大2048KB（2メガバイト）までという意味です
-        
-        // フォームが一部空欄のまま送信ボタンを押しても、フォームの画面にリダイレクトされ
-        // フォームの値が未入力である旨の警告メッセージが表示されます
 
+        try {
+            // 🆕 新規商品作成
+            $product = new Product([
+                'product_name' => $request->name,
+                'company_id'   => $request->company_id,
+                'price'        => $request->price,
+                'stock'        => $request->stock,
+                'comment'      => $request->description,
+            ]);
 
-        // 新しく商品を作ります。そのための情報はリクエストから取得します。
-        $product = new Product([
-            'product_name' => $request->get('product_name'),
-            'company_id' => $request->get('company_id'),
-            'price' => $request->get('price'),
-            'stock' => $request->get('stock'),
-            'comment' => $request->get('comment'),
-        ]);
-        //new Product([]) によって新しい「Product」（レコード）を作成しています。
-        //new を使うことで新しいインスタンスを作成することができます
+            // 🖼 画像アップロードがある場合のみ保存
+            if ($request->hasFile('image')) {
+                $filename = time() . '_' . $request->image->getClientOriginalName();
+                $filePath = $request->image->storeAs('products', $filename, 'public');
+                $product->img_path = '/storage/' . $filePath;
+            }
 
+            $product->save();
 
+            return redirect()->route('products.index')
+                ->with('success', '商品を登録しました');
 
-        // リクエストに画像が含まれている場合、その画像を保存します。
-        if($request->hasFile('img_path')){ 
-            $filename = $request->img_path->getClientOriginalName();
-            $filePath = $request->img_path->storeAs('products', $filename, 'public');
-            $product->img_path = '/storage/' . $filePath;
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            return back()->with('error', '登録中にエラーが発生しました')->withInput();
         }
-        // $request->hasFile('img_path')は、ブラウザにアップロードされたファイルが存在しているかを確認
-        // getClientOriginalName()はアップロードしたファイル名を取得するメソッドです。
-       // storeAs('products', $filename, 'public')は
-       //  アップロードされたファイルを特定の場所に特定の名前で保存するためのメソッドです
-       //　今回はstorage/app/publicにproducts" ディレクトリが作られ保存されます
-       //'products'：これはファイルを保存するディレクトリ（フォルダ）の名前を示しています。
-       // この場合は 'products' という名前のディレクトリにファイルが保存されます。
-    //$filename：これは保存するファイルの名前を示しています。
-    // getClientOriginalName() メソッドで取得したオリジナルのファイル名がここに入ります。
-    // 'public' ファイルのアクセス権限を示しています。'public' は公開設定で、誰でもこのファイルにアクセスすることができるようになります。
-
-        // 作成したデータベースに新しいレコードとして保存します。
-        $product->save();
-
-        // 全ての処理が終わったら、商品一覧画面に戻ります。
-        return redirect('products');
     }
+
 
     public function show(Product $product)
-    //(Product $product) 指定されたIDで商品をデータベースから自動的に検索し、その結果を $product に割り当てます。
     {
-        // 商品詳細画面を表示します。その際に、商品の詳細情報を画面に渡します。
-        return view('products.show', ['product' => $product]);
-    //　ビューへproductという変数が使えるように値を渡している
-    // ['product' => $product]でビューでproductを使えるようにしている
-    // compact('products')と行うことは同じであるためどちらでも良い
+        return view('products.show', compact('product'));
     }
 
- public function edit(Product $product)
-{
-    $companies = Company::all();
-    return view('products.edit', compact('product', 'companies'));
-}
+
+    public function edit(Product $product)
+    {
+        $companies = Company::all();
+        return view('products.edit', compact('product', 'companies'));
+    }
+
 
     public function update(Request $request, Product $product)
     {
-        // リクエストされた情報を確認して、必要な情報が全て揃っているかチェックします。
         $request->validate([
-            'product_name' => 'required',
-            'price' => 'required',
-            'stock' => 'required',
+            'name'        => 'required|string|max:255',
+            'company_id'  => 'required|integer|exists:companies,id',
+            'price'       => 'required|integer',
+            'stock'       => 'required|integer',
+            'description' => 'required|string|max:1000',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-        //バリデーションによりフォームに未入力項目があればエラーメッセー発生させる（未入力です　など）
 
-        // 商品の情報を更新します。
-        $product->product_name = $request->product_name;
-        //productモデルのproduct_nameをフォームから送られたproduct_nameの値に書き換える
-        $product->price = $request->price;
-        $product->stock = $request->stock;
+        try {
+            $product->product_name = $request->name;
+            $product->company_id   = $request->company_id;
+            $product->price        = $request->price;
+            $product->stock        = $request->stock;
+            $product->comment      = $request->description;
 
-        // 更新した商品を保存します。
-        $product->save();
-        // モデルインスタンスである$productに対して行われた変更をデータベースに保存するためのメソッド（機能）です。
+            if ($request->hasFile('image')) {
+                $filename = time() . '_' . $request->image->getClientOriginalName();
+                $filePath = $request->image->storeAs('products', $filename, 'public');
+                $product->img_path = '/storage/' . $filePath;
+            }
 
-        // 全ての処理が終わったら、商品一覧画面に戻ります。
-        return redirect()->route('products.index')
-            ->with('success', 'Product updated successfully');
-        // ビュー画面にメッセージを代入した変数(success)を送ります
+            $product->save();
+
+            return redirect()->route('products.index')
+                ->with('success', '商品を更新しました');
+
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            return back()->with('error', '更新中にエラーが発生しました')->withInput();
+        }
     }
+
 
     public function destroy(Product $product)
-//(Product $product) 指定されたIDで商品をデータベースから自動的に検索し、その結果を $product に割り当てます。
     {
-        // 商品を削除します。
-        $product->delete();
+        try {
+            // 画像が存在すれば削除（任意）
+            if ($product->img_path && Storage::disk('public')->exists(str_replace('/storage/', '', $product->img_path))) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $product->img_path));
+            }
 
-        // 全ての処理が終わったら、商品一覧画面に戻ります。
-        return redirect('/products');
-        //URLの/productsを検索します
-        //products　/がなくても検索できます
+            $product->delete();
+
+            return redirect()->route('products.index')
+                ->with('success', '商品を削除しました');
+
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            return back()->with('error', '削除中にエラーが発生しました');
+        }
     }
-    
-}    
+}
